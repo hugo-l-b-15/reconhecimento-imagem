@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site Hugo — Reconhecimento de Imagem</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:        #0a0c10;
+      --surface:   #111318;
+      --card:      #181b23;
+      --border:    #252830;
+      --accent:    #00e5ff;
+      --accent2:   #7c3aed;
+      --text:      #e8eaf0;
+      --muted:     #7b8099;
+      --radius:    16px;
+      --glow:      0 0 28px rgba(0,229,255,.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Ambient blobs ── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: .15;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob-1 { width: 480px; height: 480px; background: var(--accent2); top: -120px; left: -100px; }
+    .blob-2 { width: 360px; height: 360px; background: var(--accent);  bottom: -80px; right: -60px; }
+
+    /* ── Layout wrapper ── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px 64px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .logo-badge i {
+      -webkit-text-fill-color: var(--accent);
+      font-size: .75em;
+    }
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .95rem;
+      font-weight: 300;
+      letter-spacing: .04em;
+    }
+
+    /* ── Main card ── */
+    .main-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 48px rgba(0,0,0,.5);
+      width: 100%;
+      max-width: 860px;
+      overflow: hidden;
+    }
+
+    /* ── Start button area ── */
+    .start-zone {
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .start-info {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: rgba(0,229,255,.06);
+      border: 1px solid rgba(0,229,255,.15);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: .88rem;
+      color: var(--muted);
+      max-width: 480px;
+      width: 100%;
+    }
+    .start-info i { color: var(--accent); font-size: 1.1rem; margin-top: 1px; flex-shrink: 0; }
+
+    .btn-start {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--accent2) 0%, #2563eb 60%, var(--accent) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 36px;
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 4px 24px rgba(124,58,237,.4);
+      overflow: hidden;
+    }
+    .btn-start::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.15), transparent);
+      border-radius: inherit;
+    }
+    .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.55); }
+    .btn-start:active { transform: translateY(0); }
+    .btn-start i { font-size: 1.2rem; }
+
+    /* ── Content grid ── */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 0;
+    }
+    @media (max-width: 600px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Webcam panel ── */
+    .webcam-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+      gap: 14px;
+    }
+    @media (max-width: 600px) {
+      .webcam-panel { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    .webcam-frame {
+      position: relative;
+      width: 180px;
+      height: 180px;
+    }
+    .webcam-frame canvas {
+      border-radius: 12px;
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+    /* Corner brackets */
+    .webcam-frame::before,
+    .webcam-frame::after {
+      content: '';
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--accent);
+      border-style: solid;
+      border-radius: 3px;
+      z-index: 2;
+    }
+    .webcam-frame::before { top: -3px; left: -3px; border-width: 2px 0 0 2px; }
+    .webcam-frame::after  { bottom: -3px; right: -3px; border-width: 0 2px 2px 0; }
+
+    /* extra corners via inner pseudo */
+    .webcam-inner::before,
+    .webcam-inner::after {
+      content: '';
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--accent);
+      border-style: solid;
+      border-radius: 3px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .webcam-inner::before { top: -3px; right: -3px; border-width: 2px 2px 0 0; }
+    .webcam-inner::after  { bottom: -3px; left: -3px; border-width: 0 0 2px 2px; }
+
+    .webcam-placeholder {
+      width: 180px; height: 180px;
+      border-radius: 12px;
+      background: var(--card);
+      border: 1px dashed var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+    .webcam-placeholder i { font-size: 2.2rem; opacity: .4; }
+
+    .status-dot {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .78rem; color: var(--muted);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted);
+      transition: background .4s;
+    }
+    .dot.active { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulse-dot 1.4s ease infinite; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .4; }
+    }
+
+    /* ── Labels / predictions panel ── */
+    .labels-panel {
+      padding: 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Prediction item */
+    .prediction-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      transition: border-color .3s, box-shadow .3s;
+    }
+    .prediction-item.top {
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .pred-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .pred-name {
+      font-size: .88rem;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+    .pred-pct {
+      font-family: 'Syne', sans-serif;
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 42px;
+      text-align: right;
+    }
+
+    /* Custom progress bar */
+    .pred-bar-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .pred-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      transition: width .25s cubic-bezier(.4,0,.2,1);
+      width: 0%;
+    }
+    .prediction-item.top .pred-bar-fill {
+      background: linear-gradient(90deg, #2563eb, var(--accent));
+      box-shadow: 0 0 10px rgba(0,229,255,.5);
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      min-height: 180px;
+      gap: 10px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .empty-state i { font-size: 2rem; opacity: .3; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: .78rem;
+      color: var(--muted);
+      opacity: .6;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- Ambient blobs -->
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-badge"><i class="bi bi-cpu-fill"></i> Site Hugo</div>
+    <p class="subtitle">Reconhecimento de imagem em tempo real via Teachable Machine</p>
+  </header>
+
+  <!-- Main card -->
+  <div class="main-card">
+
+    <!-- Start zone -->
+    <div class="start-zone">
+      <div class="start-info">
+        <i class="bi bi-camera-video-fill"></i>
+        <span>O navegador irá solicitar acesso à sua câmera. Clique em <strong>Permitir</strong> para iniciar o reconhecimento em tempo real.</span>
+      </div>
+      <button class="btn-start" id="startBtn" onclick="init()">
+        <i class="bi bi-play-circle-fill"></i>
+        Ativar Câmera &amp; Iniciar
+      </button>
+    </div>
+
+    <!-- Content grid -->
+    <div class="content-grid">
+
+      <!-- Webcam -->
+      <div class="webcam-panel">
+        <div id="webcam-placeholder" class="webcam-placeholder">
+          <i class="bi bi-camera-video-off"></i>
+          <span>Câmera inativa</span>
+        </div>
+        <div id="webcam-container" style="display:none;">
+          <div class="webcam-frame">
+            <div class="webcam-inner" style="position:relative;width:100%;height:100%;"></div>
+          </div>
+        </div>
+        <div class="status-dot">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Aguardando início</span>
+        </div>
+      </div>
+
+      <!-- Labels -->
+      <div class="labels-panel">
+        <div class="panel-title"><i class="bi bi-bar-chart-line-fill me-1"></i> Correspondência por Classe</div>
+        <div id="label-container">
+          <!-- Empty state shown before start -->
+          <div class="empty-state" id="emptyState">
+            <i class="bi bi-graph-up-arrow"></i>
+            <span>Inicie a câmera para ver<br>as predições aqui</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    Powered by <a href="https://teachablemachine.withgoogle.com/" target="_blank">Teachable Machine</a>
+    &amp; <a href="https://www.tensorflow.org/js" target="_blank">TensorFlow.js</a>
+  </footer>
+
+</div>
+
+<!-- TensorFlow + Teachable Machine -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  const MODEL_URL = "https://teachablemachine.withgoogle.com/models/6flHjz8mu//";
+
+  let model, webcam, maxPredictions;
+  let predictionItems = [];   // array of { nameEl, pctEl, barEl, wrapEl }
+  let started = false;
+
+  async function init() {
+    if (started) return;
+    started = true;
+
+    const btn = document.getElementById("startBtn");
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Carregando modelo…';
+    btn.disabled = true;
+
+    try {
+      // Load model
+      model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+      maxPredictions = model.getTotalClasses();
+
+      // Setup webcam
+      webcam = new tmImage.Webcam(200, 200, true);
+      await webcam.setup();
+      await webcam.play();
+
+      // Show webcam
+      const placeholder = document.getElementById("webcam-placeholder");
+      const container   = document.getElementById("webcam-container");
+      const inner       = container.querySelector(".webcam-inner");
+
+      placeholder.style.display = "none";
+      container.style.display   = "block";
+      inner.appendChild(webcam.canvas);
+
+      // Status dot
+      document.getElementById("statusDot").classList.add("active");
+      document.getElementById("statusText").textContent = "Câmera ativa";
+
+      // Build prediction UI
+      const labelContainer = document.getElementById("label-container");
+      document.getElementById("emptyState").remove();
+
+      for (let i = 0; i < maxPredictions; i++) {
+        const item = document.createElement("div");
+        item.className = "prediction-item";
+
+        item.innerHTML = `
+          <div class="pred-header">
+            <span class="pred-name">Classe ${i + 1}</span>
+            <span class="pred-pct">0%</span>
+          </div>
+          <div class="pred-bar-track">
+            <div class="pred-bar-fill" style="width:0%"></div>
+          </div>`;
+
+        labelContainer.appendChild(item);
+        predictionItems.push({
+          wrapEl: item,
+          nameEl: item.querySelector(".pred-name"),
+          pctEl:  item.querySelector(".pred-pct"),
+          barEl:  item.querySelector(".pred-bar-fill"),
+        });
+      }
+
+      // Update button
+      btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Reconhecimento ativo';
+      btn.style.background = "linear-gradient(135deg,#16a34a,#22c55e)";
+
+      window.requestAnimationFrame(loop);
+
+    } catch (err) {
+      console.error(err);
+      btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Erro ao iniciar';
+      btn.style.background = "linear-gradient(135deg,#dc2626,#f87171)";
+      btn.disabled = false;
+      started = false;
+      document.getElementById("statusText").textContent = "Erro";
+    }
+  }
+
+  async function loop() {
+    webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+  }
+
+  async function predict() {
+    const predictions = await model.predict(webcam.canvas);
+
+    // Find top class index
+    let topIdx = 0;
+    predictions.forEach((p, i) => {
+      if (p.probability > predictions[topIdx].probability) topIdx = i;
+    });
+
+    predictions.forEach((p, i) => {
+      const pct  = Math.round(p.probability * 100);
+      const item = predictionItems[i];
+
+      item.nameEl.textContent = p.className;
+      item.pctEl.textContent  = pct + "%";
+      item.barEl.style.width  = pct + "%";
+
+      if (i === topIdx) {
+        item.wrapEl.classList.add("top");
+      } else {
+        item.wrapEl.classList.remove("top");
+      }
+    });
+  }
+</script>
+</body>
+</html>
