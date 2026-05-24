@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Gerenciador de Tarefas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              950: '#0f172a',
+              900: '#0d1526',
+              800: '#1e293b',
+              700: '#334155',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background-color: #0f172a;
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(99,102,241,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(14,165,233,0.10) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.60);
+      border: 1px solid rgba(99, 102, 241, 0.18);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 25px 50px rgba(0,0,0,0.45);
+    }
+    .input-field {
+      background: rgba(15, 23, 42, 0.70);
+      border: 1px solid rgba(100, 116, 139, 0.30);
+      color: #e2e8f0;
+      transition: all 0.2s;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.70);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 25px rgba(99,102,241,0.50); }
+    .screen { display: none; position: relative; z-index: 1; }
+    .screen.active { display: flex; }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .todo-item {
+      transition: all 0.2s;
+    }
+    .todo-item.done {
+      opacity: 0.5;
+    }
+    .todo-item.done .todo-title,
+    .todo-item.done .todo-desc {
+      text-decoration: line-through;
+    }
+    
+    .badge-work { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .badge-personal { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .badge-study { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+  <!-- LOGIN SCREEN -->
+  <section id="screen-login" class="screen active w-full min-h-screen items-center justify-center">
+    <div class="w-full max-w-md mx-auto fade-in">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-white tracking-tight">TaskFlow</h1>
+        <p class="text-slate-400 mt-2">Bem-vindo de volta</p>
+      </div>
+      <div class="glass-card rounded-2xl p-8">
+        <h2 class="text-lg font-semibold text-white mb-6">Entrar na sua conta</h2>
+        <div id="login-error" class="hidden mb-4 p-3 rounded-xl text-sm text-red-300 bg-red-900/30 border border-red-500/30"></div>
+        <form id="form-login" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">E-mail</label>
+            <input id="login-email" type="email" placeholder="seu@email.com" class="input-field w-full px-4 py-3 rounded-xl text-sm" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">Senha</label>
+            <input id="login-password" type="password" placeholder="••••••••" class="input-field w-full px-4 py-3 rounded-xl text-sm" required />
+          </div>
+          <button type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-semibold mt-2">Entrar</button>
+        </form>
+        <p class="text-center text-sm text-slate-500 mt-6">
+          Não tem conta? <button id="go-register" type="button" class="text-indigo-400 hover:text-indigo-300 ml-1 underline">Cadastrar-se</button>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- REGISTER SCREEN -->
+  <section id="screen-register" class="screen w-full min-h-screen items-center justify-center">
+    <div class="w-full max-w-md mx-auto fade-in">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-white tracking-tight">TaskFlow</h1>
+        <p class="text-slate-400 mt-2">Crie sua conta</p>
+      </div>
+      <div class="glass-card rounded-2xl p-8">
+        <h2 class="text-lg font-semibold text-white mb-6">Nova conta</h2>
+        <div id="register-error" class="hidden mb-4 p-3 rounded-xl text-sm text-red-300 bg-red-900/30 border border-red-500/30"></div>
+        <div id="register-success" class="hidden mb-4 p-3 rounded-xl text-sm text-emerald-300 bg-emerald-900/30 border border-emerald-500/30"></div>
+        <form id="form-register" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">Nome</label>
+            <input id="reg-name" type="text" placeholder="Seu nome" class="input-field w-full px-4 py-3 rounded-xl text-sm" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">E-mail</label>
+            <input id="reg-email" type="email" placeholder="seu@email.com" class="input-field w-full px-4 py-3 rounded-xl text-sm" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">Senha</label>
+            <input id="reg-password" type="password" placeholder="Mínimo 6 chars" class="input-field w-full px-4 py-3 rounded-xl text-sm" required />
+          </div>
+          <button type="submit" class="btn-primary w-full py-3 rounded-xl text-white font-semibold mt-2">Criar conta</button>
+        </form>
+        <p class="text-center text-sm text-slate-500 mt-6">
+          Já tem conta? <button id="go-login" type="button" class="text-indigo-400 hover:text-indigo-300 ml-1 underline">Fazer login</button>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD SCREEN -->
+  <section id="screen-dashboard" class="screen w-full min-h-screen">
+    <div class="w-full max-w-3xl mx-auto py-10 px-4 relative z-10 fade-in">
+      
+      <!-- Header -->
+      <header class="flex items-center justify-between mb-8 glass-card p-4 rounded-2xl">
+        <h2 class="text-xl font-bold text-white" id="user-greeting">Olá, Usuário</h2>
+        <button id="btn-logout" class="text-sm font-medium text-slate-400 hover:text-red-400 transition-colors">Sair</button>
+      </header>
+
+      <!-- Formulário de Tarefa -->
+      <div class="glass-card rounded-2xl p-6 mb-8">
+        <h3 class="text-md font-semibold text-white mb-4">Nova Tarefa</h3>
+        <form id="form-todo" class="space-y-4">
+          <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">Título</label>
+              <input id="todo-title" type="text" placeholder="O que precisa ser feito?" class="input-field w-full px-4 py-3 rounded-xl text-sm" required />
+            </div>
+            <div class="sm:w-48">
+              <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">Tipo</label>
+              <select id="todo-type" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                <option value="Trabalho">Trabalho</option>
+                <option value="Pessoal">Pessoal</option>
+                <option value="Estudos">Estudos</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase">Descrição (Opcional)</label>
+            <textarea id="todo-desc" rows="2" placeholder="Detalhes da tarefa..." class="input-field w-full px-4 py-3 rounded-xl text-sm resize-none"></textarea>
+          </div>
+          <button type="submit" class="btn-primary px-6 py-3 rounded-xl text-white font-semibold w-full sm:w-auto">Adicionar Tarefa</button>
+        </form>
+      </div>
+
+      <!-- Lista de Tarefas -->
+      <div>
+        <h3 class="text-md font-semibold text-white mb-4">Minhas Tarefas</h3>
+        <div id="todo-list" class="space-y-3">
+          <!-- Tarefas renderizadas aqui -->
+        </div>
+        <div id="empty-state" class="hidden glass-card p-8 rounded-2xl text-center text-slate-400 mt-4">
+          Nenhuma tarefa cadastrada ainda.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
